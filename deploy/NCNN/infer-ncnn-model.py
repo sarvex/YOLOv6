@@ -9,16 +9,15 @@ import sys
 import os
 
 ROOT = os.getcwd()
-if str(ROOT) not in sys.path:
-    sys.path.append(str(ROOT))
+if ROOT not in sys.path:
+    sys.path.append(ROOT)
 MAJOR, MINOR = map(int, cv2.__version__.split('.')[:2])
 assert MAJOR == 4
 
 
 def softmax(x: ndarray, axis: int = -1) -> ndarray:
     e_x = np.exp(x - np.max(x, axis=axis, keepdims=True))
-    y = e_x / e_x.sum(axis=axis, keepdims=True)
-    return y
+    return e_x / e_x.sum(axis=axis, keepdims=True)
 
 
 def sigmoid(x: ndarray) -> ndarray:

@@ -124,9 +124,7 @@ class RepPANNeck(nn.Module):
         p_concat_layer2 = torch.cat([down_feat0, fpn_out0], 1)
         pan_out0 = self.Rep_n4(p_concat_layer2)
 
-        outputs = [pan_out2, pan_out1, pan_out0]
-
-        return outputs
+        return [pan_out2, pan_out1, pan_out0]
 
 
 class RepBiFPANNeck(nn.Module):
@@ -232,9 +230,7 @@ class RepBiFPANNeck(nn.Module):
         p_concat_layer2 = torch.cat([down_feat0, fpn_out0], 1)
         pan_out0 = self.Rep_n4(p_concat_layer2)
 
-        outputs = [pan_out2, pan_out1, pan_out0]
-
-        return outputs
+        return [pan_out2, pan_out1, pan_out0]
 
 
 class RepPANNeck6(nn.Module):
@@ -386,9 +382,7 @@ class RepPANNeck6(nn.Module):
         p_concat_layer0 = torch.cat([down_feat0, fpn_out0], 1)
         pan_out0 = self.Rep_n6(p_concat_layer0) # P6
 
-        outputs = [pan_out3, pan_out2, pan_out1, pan_out0]
-
-        return outputs
+        return [pan_out3, pan_out2, pan_out1, pan_out0]
 
 
 class RepBiFPANNeck6(nn.Module):
@@ -536,9 +530,7 @@ class RepBiFPANNeck6(nn.Module):
         p_concat_layer0 = torch.cat([down_feat0, fpn_out0], 1)
         pan_out0 = self.Rep_n6(p_concat_layer0) # P6
 
-        outputs = [pan_out3, pan_out2, pan_out1, pan_out0]
-
-        return outputs
+        return [pan_out3, pan_out2, pan_out1, pan_out0]
 
 
 class CSPRepPANNeck(nn.Module):
@@ -658,9 +650,7 @@ class CSPRepPANNeck(nn.Module):
         p_concat_layer2 = torch.cat([down_feat0, fpn_out0], 1)
         pan_out0 = self.Rep_n4(p_concat_layer2)
 
-        outputs = [pan_out2, pan_out1, pan_out0]
-
-        return outputs
+        return [pan_out2, pan_out1, pan_out0]
 
 
 class CSPRepBiFPANNeck(nn.Module):
@@ -780,9 +770,7 @@ class CSPRepBiFPANNeck(nn.Module):
         p_concat_layer2 = torch.cat([down_feat0, fpn_out0], 1)
         pan_out0 = self.Rep_n4(p_concat_layer2)
 
-        outputs = [pan_out2, pan_out1, pan_out0]
-
-        return outputs
+        return [pan_out2, pan_out1, pan_out0]
 
 
 class CSPRepPANNeck_P6(nn.Module):
@@ -947,9 +935,7 @@ class CSPRepPANNeck_P6(nn.Module):
         p_concat_layer0 = torch.cat([down_feat0, fpn_out0], 1)
         pan_out0 = self.Rep_n6(p_concat_layer0) # P6
 
-        outputs = [pan_out3, pan_out2, pan_out1, pan_out0]
-
-        return outputs
+        return [pan_out3, pan_out2, pan_out1, pan_out0]
 
 
 class CSPRepBiFPANNeck_P6(nn.Module):
@@ -1111,9 +1097,7 @@ class CSPRepBiFPANNeck_P6(nn.Module):
         p_concat_layer0 = torch.cat([down_feat0, fpn_out0], 1)
         pan_out0 = self.Rep_n6(p_concat_layer0) # P6
 
-        outputs = [pan_out3, pan_out2, pan_out1, pan_out0]
-
-        return outputs
+        return [pan_out3, pan_out2, pan_out1, pan_out0]
 
 class Lite_EffiNeck(nn.Module):
 
@@ -1221,6 +1205,4 @@ class Lite_EffiNeck(nn.Module):
         pan_out0 = top_features + self.p6_conv_2(pan_out1)  #p6
 
 
-        outputs = [pan_out3, pan_out2, pan_out1, pan_out0]
-
-        return outputs
+        return [pan_out3, pan_out2, pan_out1, pan_out0]

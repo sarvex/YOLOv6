@@ -4,8 +4,8 @@ import sys
 import os
 
 ROOT = os.getcwd()
-if str(ROOT) not in sys.path:
-    sys.path.append(str(ROOT))
+if ROOT not in sys.path:
+    sys.path.append(ROOT)
 
 sys.path.append('../../')
 
@@ -29,11 +29,16 @@ def quant_sensitivity_analyse(model_ptq, evaler):
     model_quant_disable(model_ptq)
 
     # analyse each quantable layer
-    quant_sensitivity = list()
+    quant_sensitivity = []
     for k, m in model_ptq.named_modules():
-        if isinstance(m, quant_nn.QuantConv2d) or \
-           isinstance(m, quant_nn.QuantConvTranspose2d) or \
-           isinstance(m, quant_nn.MaxPool2d):
+        if isinstance(
+            m,
+            (
+                quant_nn.QuantConv2d,
+                quant_nn.QuantConvTranspose2d,
+                quant_nn.MaxPool2d,
+            ),
+        ):
             module_quant_enable(model_ptq, k)
         else:
             # module can not be quantized, continue
@@ -115,8 +120,7 @@ if __name__ == '__main__':
 
     # Step3: do sensitivity analysis and save sensistivity results
     quant_sensitivity = quant_sensitivity_analyse(model_ptq, yolov6_evaler)
-    qfile = "{}_quant_sensitivity_{}_calib.txt".format(os.path.basename(args.weights).split('.')[0],
-                                                     args.batch_size * args.batch_number)
+    qfile = f"{os.path.basename(args.weights).split('.')[0]}_quant_sensitivity_{args.batch_size * args.batch_number}_calib.txt"
     quant_sensitivity_save(quant_sensitivity, qfile)
 
 

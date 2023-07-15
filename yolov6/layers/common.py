@@ -49,9 +49,7 @@ class ConvModule(nn.Module):
         return self.act(self.bn(self.conv(x)))
 
     def forward_fuse(self, x):
-        if self.activation_type is None:
-            return self.conv(x)
-        return self.act(self.conv(x))
+        return self.conv(x) if self.activation_type is None else self.act(self.conv(x))
 
 
 class ConvBNReLU(nn.Module):
@@ -247,11 +245,7 @@ class RepVGGBlock(nn.Module):
         if hasattr(self, 'rbr_reparam'):
             return self.nonlinearity(self.se(self.rbr_reparam(inputs)))
 
-        if self.rbr_identity is None:
-            id_out = 0
-        else:
-            id_out = self.rbr_identity(inputs)
-
+        id_out = 0 if self.rbr_identity is None else self.rbr_identity(inputs)
         return self.nonlinearity(self.se(self.rbr_dense(inputs) + self.rbr_1x1(inputs) + id_out))
 
     def get_equivalent_kernel_bias(self):
@@ -338,11 +332,7 @@ class QARepVGGBlock(RepVGGBlock):
         if hasattr(self, 'rbr_reparam'):
             return self.nonlinearity(self.bn(self.se(self.rbr_reparam(inputs))))
 
-        if self.rbr_identity is None:
-            id_out = 0
-        else:
-            id_out = self.rbr_identity(inputs)
-
+        id_out = 0 if self.rbr_identity is None else self.rbr_identity(inputs)
         return self.nonlinearity(self.bn(self.se(self.rbr_dense(inputs) + self.rbr_1x1(inputs) + id_out)))
 
     def get_equivalent_kernel_bias(self):
@@ -413,15 +403,8 @@ class QARepVGGBlockV2(RepVGGBlock):
         if hasattr(self, 'rbr_reparam'):
             return self.nonlinearity(self.bn(self.se(self.rbr_reparam(inputs))))
 
-        if self.rbr_identity is None:
-            id_out = 0
-        else:
-            id_out = self.rbr_identity(inputs)
-        if self.rbr_avg is None:
-            avg_out = 0
-        else:
-            avg_out = self.rbr_avg(inputs)
-
+        id_out = 0 if self.rbr_identity is None else self.rbr_identity(inputs)
+        avg_out = 0 if self.rbr_avg is None else self.rbr_avg(inputs)
         return self.nonlinearity(self.bn(self.se(self.rbr_dense(inputs) + self.rbr_1x1(inputs) + id_out + avg_out)))
 
     def get_equivalent_kernel_bias(self):
@@ -493,8 +476,7 @@ class RealVGGBlock(nn.Module):
             self.se = nn.Identity()
 
     def forward(self, inputs):
-        out = self.relu(self.se(self.bn(self.conv(inputs))))
-        return out
+        return self.relu(self.se(self.bn(self.conv(inputs))))
 
 
 class ScaleLayer(torch.nn.Module):
@@ -593,14 +575,8 @@ class BottleRep(nn.Module):
         super().__init__()
         self.conv1 = basic_block(in_channels, out_channels)
         self.conv2 = basic_block(out_channels, out_channels)
-        if in_channels != out_channels:
-            self.shortcut = False
-        else:
-            self.shortcut = True
-        if weight:
-            self.alpha = Parameter(torch.ones(1))
-        else:
-            self.alpha = 1.0
+        self.shortcut = in_channels == out_channels
+        self.alpha = Parameter(torch.ones(1)) if weight else 1.0
 
     def forward(self, x):
         outputs = self.conv1(x)
@@ -615,14 +591,8 @@ class BottleRep3(nn.Module):
         self.conv1 = basic_block(in_channels, out_channels)
         self.conv2 = basic_block(out_channels, out_channels)
         self.conv3 = basic_block(out_channels, out_channels)
-        if in_channels != out_channels:
-            self.shortcut = False
-        else:
-            self.shortcut = True
-        if weight:
-            self.alpha = Parameter(torch.ones(1))
-        else:
-            self.alpha = 1.0
+        self.shortcut = in_channels == out_channels
+        self.alpha = Parameter(torch.ones(1)) if weight else 1.0
 
     def forward(self, x):
         outputs = self.conv1(x)
@@ -734,7 +704,7 @@ def get_block(mode):
     elif mode == 'conv_silu':
         return ConvBNSiLU
     else:
-        raise NotImplementedError("Undefied Repblock choice for mode {}".format(mode))
+        raise NotImplementedError(f"Undefied Repblock choice for mode {mode}")
 
 
 class SEBlock(nn.Module):
@@ -764,8 +734,7 @@ class SEBlock(nn.Module):
         x = self.relu(x)
         x = self.conv2(x)
         x = self.hardsigmoid(x)
-        out = identity * x
-        return out
+        return identity * x
 
 
 def channel_shuffle(x, groups):

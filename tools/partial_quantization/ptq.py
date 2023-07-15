@@ -51,13 +51,7 @@ def compute_amax(model, **kwargs):
 
 
 def quantable_op_check(k, quantable_ops):
-    if quantable_ops is None:
-        return True
-
-    if k in quantable_ops:
-        return True
-    else:
-        return False
+    return True if quantable_ops is None else k in quantable_ops
 
 
 def quant_model_init(model, device):
@@ -73,7 +67,7 @@ def quant_model_init(model, device):
 
     for k, m in model_ptq.named_modules():
         if 'proj_conv' in k:
-            print("Skip Layer {}".format(k))
+            print(f"Skip Layer {k}")
             continue
 
         if isinstance(m, nn.Conv2d):
@@ -155,7 +149,12 @@ def partial_quant(model_ptq, quantable_ops=None):
         if quantable_op_check(k, quantable_ops):
             continue
         # enable full-precision
-        if isinstance(m, quant_nn.QuantConv2d) or \
-            isinstance(m, quant_nn.QuantConvTranspose2d) or \
-            isinstance(m, quant_nn.QuantMaxPool2d):
+        if isinstance(
+            m,
+            (
+                quant_nn.QuantConv2d,
+                quant_nn.QuantConvTranspose2d,
+                quant_nn.QuantMaxPool2d,
+            ),
+        ):
             module_quant_disable(model_ptq, k)

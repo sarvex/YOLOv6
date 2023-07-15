@@ -13,10 +13,7 @@ IMG_FORMATS.extend([f.upper() for f in IMG_FORMATS])
 def main(args):
     img_dir, label_dir, class_names = args.img_dir, args.label_dir, args.class_names
 
-    label_map = dict()
-    for class_id, classname in enumerate(class_names):
-        label_map[class_id] = classname
-
+    label_map = dict(enumerate(class_names))
     for file in os.listdir(img_dir):
         if file.split('.')[-1] not in IMG_FORMATS:
             print(f'[Warning]: Non-image file {file}')
@@ -27,7 +24,7 @@ def main(args):
         try:
             img_data = cv2.imread(img_path)
             height, width, _ = img_data.shape
-            color = [tuple(np.random.choice(range(256), size=3)) for i in class_names]
+            color = [tuple(np.random.choice(range(256), size=3)) for _ in class_names]
             thickness = 2
 
             with open(label_path, 'r') as f:
@@ -36,8 +33,22 @@ def main(args):
 
                     x_tl = int((x_c - w / 2) * width)
                     y_tl = int((y_c - h / 2) * height)
-                    cv2.rectangle(img_data, (x_tl, y_tl), (x_tl + int(w * width), y_tl + int(h * height)), tuple([int(x) for x in color[cls]]), thickness)
-                    cv2.putText(img_data, label_map[cls], (x_tl, y_tl - 10), cv2.FONT_HERSHEY_COMPLEX, 1, tuple([int(x) for x in color[cls]]), thickness)
+                    cv2.rectangle(
+                        img_data,
+                        (x_tl, y_tl),
+                        (x_tl + int(w * width), y_tl + int(h * height)),
+                        tuple(int(x) for x in color[cls]),
+                        thickness,
+                    )
+                    cv2.putText(
+                        img_data,
+                        label_map[cls],
+                        (x_tl, y_tl - 10),
+                        cv2.FONT_HERSHEY_COMPLEX,
+                        1,
+                        tuple(int(x) for x in color[cls]),
+                        thickness,
+                    )
 
             cv2.imshow('image', img_data)
             cv2.waitKey(0)

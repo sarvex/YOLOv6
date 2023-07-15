@@ -21,8 +21,9 @@ class ConfigDict(Dict):
         try:
             value = super(ConfigDict, self).__getattr__(name)
         except KeyError:
-            ex = AttributeError("'{}' object has no attribute '{}'".format(
-                self.__class__.__name__, name))
+            ex = AttributeError(
+                f"'{self.__class__.__name__}' object has no attribute '{name}'"
+            )
         except Exception as e:
             ex = e
         else:
@@ -35,22 +36,21 @@ class Config(object):
     @staticmethod
     def _file2dict(filename):
         filename = str(filename)
-        if filename.endswith('.py'):
-            with tempfile.TemporaryDirectory() as temp_config_dir:
-                shutil.copyfile(filename,
-                                osp.join(temp_config_dir, '_tempconfig.py'))
-                sys.path.insert(0, temp_config_dir)
-                mod = import_module('_tempconfig')
-                sys.path.pop(0)
-                cfg_dict = {
-                    name: value
-                    for name, value in mod.__dict__.items()
-                    if not name.startswith('__')
-                }
-                # delete imported module
-                del sys.modules['_tempconfig']
-        else:
+        if not filename.endswith('.py'):
             raise IOError('Only .py type are supported now!')
+        with tempfile.TemporaryDirectory() as temp_config_dir:
+            shutil.copyfile(filename,
+                            osp.join(temp_config_dir, '_tempconfig.py'))
+            sys.path.insert(0, temp_config_dir)
+            mod = import_module('_tempconfig')
+            sys.path.pop(0)
+            cfg_dict = {
+                name: value
+                for name, value in mod.__dict__.items()
+                if not name.startswith('__')
+            }
+            # delete imported module
+            del sys.modules['_tempconfig']
         cfg_text = filename + '\n'
         with open(filename, 'r') as f:
             cfg_text += f.read()
@@ -64,10 +64,9 @@ class Config(object):
 
     def __init__(self, cfg_dict=None, cfg_text=None, filename=None):
         if cfg_dict is None:
-            cfg_dict = dict()
+            cfg_dict = {}
         elif not isinstance(cfg_dict, dict):
-            raise TypeError('cfg_dict must be a dict, but got {}'.format(
-                type(cfg_dict)))
+            raise TypeError(f'cfg_dict must be a dict, but got {type(cfg_dict)}')
 
         super(Config, self).__setattr__('_cfg_dict', ConfigDict(cfg_dict))
         super(Config, self).__setattr__('_filename', filename)
@@ -89,8 +88,7 @@ class Config(object):
         return self._text
 
     def __repr__(self):
-        return 'Config (path: {}): {}'.format(self.filename,
-                                              self._cfg_dict.__repr__())
+        return f'Config (path: {self.filename}): {self._cfg_dict.__repr__()}'
 
     def __getattr__(self, name):
         return getattr(self._cfg_dict, name)

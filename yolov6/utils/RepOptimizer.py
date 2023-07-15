@@ -9,10 +9,10 @@ from yolov6.utils.events import LOGGER
 
 def extract_blocks_into_list(model, blocks):
    for module in model.children():
-        if isinstance(module, LinearAddBlock) or isinstance(module, RealVGGBlock):
-            blocks.append(module)
-        else:
-            extract_blocks_into_list(module, blocks)
+      if isinstance(module, (LinearAddBlock, RealVGGBlock)):
+         blocks.append(module)
+      else:
+         extract_blocks_into_list(module, blocks)
 
 
 def extract_scales(model):
@@ -30,11 +30,7 @@ def extract_scales(model):
 
 
 def check_keywords_in_name(name, keywords=()):
-    isin = False
-    for keyword in keywords:
-        if keyword in name:
-            isin = True
-    return isin
+   return any(keyword in name for keyword in keywords)
 
 
 def set_weight_decay(model, skip_list=(), skip_keywords=(), echo=False):
@@ -134,22 +130,19 @@ class RepVGGOptimizer(SGD):
                     conv3x3.weight.data += F.pad(identity, [1, 1, 1, 1])
 
     def generate_gradient_masks(self, scales_by_idx, conv3x3_by_idx, cpu_mode=False):
-        self.grad_mask_map = {}
-        for scales, conv3x3 in zip(scales_by_idx, conv3x3_by_idx):
-            para = conv3x3.weight
-            if len(scales) == 2:
-                mask = torch.ones_like(para, device=scales[0].device) * (scales[1] ** 2).view(-1, 1, 1, 1)
-                mask[:, :, 1:2, 1:2] += torch.ones(para.shape[0], para.shape[1], 1, 1, device=scales[0].device) * (scales[0] ** 2).view(-1, 1, 1, 1)
-            else:
-                mask = torch.ones_like(para, device=scales[0].device) * (scales[2] ** 2).view(-1, 1, 1, 1)
-                mask[:, :, 1:2, 1:2] += torch.ones(para.shape[0], para.shape[1], 1, 1, device=scales[0].device) * (scales[1] ** 2).view(-1, 1, 1, 1)
-                ids = np.arange(para.shape[1])
-                assert para.shape[1] == para.shape[0]
-                mask[ids, ids, 1:2, 1:2] += 1.0
-            if cpu_mode:
-                self.grad_mask_map[para] = mask
-            else:
-                self.grad_mask_map[para] = mask.cuda()
+       self.grad_mask_map = {}
+       for scales, conv3x3 in zip(scales_by_idx, conv3x3_by_idx):
+          para = conv3x3.weight
+          if len(scales) == 2:
+              mask = torch.ones_like(para, device=scales[0].device) * (scales[1] ** 2).view(-1, 1, 1, 1)
+              mask[:, :, 1:2, 1:2] += torch.ones(para.shape[0], para.shape[1], 1, 1, device=scales[0].device) * (scales[0] ** 2).view(-1, 1, 1, 1)
+          else:
+              mask = torch.ones_like(para, device=scales[0].device) * (scales[2] ** 2).view(-1, 1, 1, 1)
+              mask[:, :, 1:2, 1:2] += torch.ones(para.shape[0], para.shape[1], 1, 1, device=scales[0].device) * (scales[1] ** 2).view(-1, 1, 1, 1)
+              ids = np.arange(para.shape[1])
+              assert para.shape[1] == para.shape[0]
+              mask[ids, ids, 1:2, 1:2] += 1.0
+          self.grad_mask_map[para] = mask if cpu_mode else mask.cuda()
 
     def __setstate__(self, state):
         super(SGD, self).__setstate__(state)
@@ -157,39 +150,32 @@ class RepVGGOptimizer(SGD):
             group.setdefault('nesterov', False)
 
     def step(self, closure=None):
-        loss = None
-        if closure is not None:
-            loss = closure()
+       loss = closure() if closure is not None else None
+       for group in self.param_groups:
+          weight_decay = group['weight_decay']
+          momentum = group['momentum']
+          dampening = group['dampening']
+          nesterov = group['nesterov']
 
-        for group in self.param_groups:
-            weight_decay = group['weight_decay']
-            momentum = group['momentum']
-            dampening = group['dampening']
-            nesterov = group['nesterov']
+          for p in group['params']:
+             if p.grad is None:
+                 continue
 
-            for p in group['params']:
-                if p.grad is None:
-                    continue
+             if p in self.grad_mask_map:
+                 d_p = p.grad.data * self.grad_mask_map[p]  # Note: multiply the mask here
+             else:
+                 d_p = p.grad.data
 
-                if p in self.grad_mask_map:
-                    d_p = p.grad.data * self.grad_mask_map[p]  # Note: multiply the mask here
+             if weight_decay != 0:
+                 d_p.add_(weight_decay, p.data)
+             if momentum != 0:
+                param_state = self.state[p]
+                if 'momentum_buffer' not in param_state:
+                    buf = param_state['momentum_buffer'] = torch.clone(d_p).detach()
                 else:
-                    d_p = p.grad.data
+                    buf = param_state['momentum_buffer']
+                    buf.mul_(momentum).add_(1 - dampening, d_p)
+                d_p = d_p.add(momentum, buf) if nesterov else buf
+             p.data.add_(-group['lr'], d_p)
 
-                if weight_decay != 0:
-                    d_p.add_(weight_decay, p.data)
-                if momentum != 0:
-                    param_state = self.state[p]
-                    if 'momentum_buffer' not in param_state:
-                        buf = param_state['momentum_buffer'] = torch.clone(d_p).detach()
-                    else:
-                        buf = param_state['momentum_buffer']
-                        buf.mul_(momentum).add_(1 - dampening, d_p)
-                    if nesterov:
-                        d_p = d_p.add(momentum, buf)
-                    else:
-                        d_p = buf
-
-                p.data.add_(-group['lr'], d_p)
-
-        return loss
+       return loss

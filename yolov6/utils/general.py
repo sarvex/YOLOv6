@@ -12,9 +12,9 @@ from yolov6.utils.events import LOGGER
 def increment_name(path):
     '''increase save directory's id'''
     path = Path(path)
-    sep = ''
     if path.exists():
         path, suffix = (path.with_suffix(''), path.suffix) if path.is_file() else (path, '')
+        sep = ''
         for n in range(1, 9999):
             p = f'{path}{sep}{n}{suffix}'
             if not os.path.exists(p):
@@ -48,8 +48,7 @@ def bbox2dist(anchor_points, bbox, reg_max):
     x1y1, x2y2 = torch.split(bbox, 2, -1)
     lt = anchor_points - x1y1
     rb = x2y2 - anchor_points
-    dist = torch.cat([lt, rb], -1).clip(0, reg_max - 0.01)
-    return dist
+    return torch.cat([lt, rb], -1).clip(0, reg_max - 0.01)
 
 
 def xywh2xyxy(bboxes):

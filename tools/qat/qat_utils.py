@@ -68,11 +68,11 @@ def qat_init_model_manu(model, cfg, args):
 
     for k, m in model.named_modules():
         if 'proj_conv' in k:
-            print("Skip Layer {}".format(k))
+            print(f"Skip Layer {k}")
             continue
         if args.calib is True and cfg.ptq.sensitive_layers_skip is True:
             if k in cfg.ptq.sensitive_layers_list:
-                print("Skip Layer {}".format(k))
+                print(f"Skip Layer {k}")
                 continue
         # print(k, m)
         if isinstance(m, nn.Conv2d):

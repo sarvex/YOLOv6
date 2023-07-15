@@ -12,8 +12,8 @@ import sys
 import datetime
 
 ROOT = os.getcwd()
-if str(ROOT) not in sys.path:
-    sys.path.append(str(ROOT))
+if ROOT not in sys.path:
+    sys.path.append(ROOT)
 
 from yolov6.core.engine import Trainer
 from yolov6.utils.config import Config
@@ -77,7 +77,9 @@ def check_and_init(args):
         else:
             LOGGER.warning(f'We can not find the path of {Path(checkpoint_path).parent.parent / "args.yaml"},'\
                            f' we will save exp log to {Path(checkpoint_path).parent.parent}')
-            LOGGER.warning(f'In this case, make sure to provide configuration, such as data, batch size.')
+            LOGGER.warning(
+                'In this case, make sure to provide configuration, such as data, batch size.'
+            )
             args.save_dir = str(Path(checkpoint_path).parent.parent)
         args.resume = checkpoint_path  # set the args.resume to checkpoint path.
     else:

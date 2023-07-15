@@ -148,7 +148,7 @@ def mosaic_augmentation(shape, imgs, hs, ws, labels, hyp, specific_shape = False
     assert len(imgs) == 4, "Mosaic augmentation of current version only supports 4 images."
     labels4 = []
     if not specific_shape:
-        if isinstance(shape, list) or isinstance(shape, np.ndarray):
+        if isinstance(shape, (list, np.ndarray)):
             target_height, target_width = shape
         else:
             target_height = target_width = shape

@@ -116,8 +116,7 @@ class Detector(DetectBackend):
         boxes = det[:, :4]
         scores = det[:, 4]
         labels = det[:, 5].long()
-        prediction = {'boxes': boxes, 'scores': scores, 'labels': labels}
-        return prediction
+        return {'boxes': boxes, 'scores': scores, 'labels': labels}
 
     def predict(self, img_path):
         img, img_src = process_image(img_path, self.img_size, 32)

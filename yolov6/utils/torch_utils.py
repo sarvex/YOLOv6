@@ -107,5 +107,4 @@ def get_model_info(model, img_size=640):
     flops /= 1e9
     img_size = img_size if isinstance(img_size, list) else [img_size, img_size]
     flops *= img_size[0] * img_size[1] / stride / stride * 2  # Gflops
-    info = "Params: {:.2f}M, Gflops: {:.2f}".format(params, flops)
-    return info
+    return "Params: {:.2f}M, Gflops: {:.2f}".format(params, flops)

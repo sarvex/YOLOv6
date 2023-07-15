@@ -73,7 +73,7 @@ def build_engine_from_onnx(model_name,
     elif dtype == "fp32":
         t_dtype = trt.DataType.FLOAT
     else:
-        raise ValueError("Unsupported data type: %s" % dtype)
+        raise ValueError(f"Unsupported data type: {dtype}")
 
     if trt.__version__[0] < '8':
         print('Exit, trt.version should be >=8. Now your trt version is ', trt.__version__[0])
@@ -85,8 +85,7 @@ def build_engine_from_onnx(model_name,
 
     """Build a TensorRT engine from ONNX"""
     TRT_LOGGER = trt.Logger(trt.Logger.VERBOSE) if verbose else trt.Logger()
-    with trt.Builder(TRT_LOGGER) as builder, builder.create_network(flags=network_flags) as network, \
-            trt.OnnxParser(network, TRT_LOGGER) as parser:
+    with (trt.Builder(TRT_LOGGER) as builder, builder.create_network(flags=network_flags) as network, trt.OnnxParser(network, TRT_LOGGER) as parser):
         with open(model_name, 'rb') as model:
             if not parser.parse(model.read()):
                 print('ERROR: ONNX Parse Failed')
@@ -120,9 +119,7 @@ def build_engine_from_onnx(model_name,
             traceback.print_tb(tb)  # Fixed format
             tb_info = traceback.extract_tb(tb)
             _, line, _, text = tb_info[-1]
-            raise AssertionError(
-                "Parsing failed on line {} in statement {}".format(line, text)
-            )
+            raise AssertionError(f"Parsing failed on line {line} in statement {text}")
 
         return engine
 
@@ -173,11 +170,14 @@ def main():
 
     engine_path = args.model.replace('.onnx', '.trt')
     if args.dtype == "int8" and not args.qat:
-        engine_path = args.model.replace('.onnx', '-int8-{}-{}-minmax.trt'.format(args.batch_size, args.num_calib_batch))
+        engine_path = args.model.replace(
+            '.onnx',
+            f'-int8-{args.batch_size}-{args.num_calib_batch}-minmax.trt',
+        )
 
     with open(engine_path, 'wb') as f:
         f.write(engine.serialize())
-    print('Serialized the TensorRT engine to file: %s' % engine_path)
+    print(f'Serialized the TensorRT engine to file: {engine_path}')
 
 
 if __name__ == '__main__':

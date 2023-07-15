@@ -1,6 +1,7 @@
 """
 This script is used for evaluating the performance of YOLOv6 TensorRT models.
 """
+
 import os
 import sys
 import json
@@ -16,8 +17,8 @@ from pycocotools.cocoeval import COCOeval
 from tensorrt_processor import Processor
 
 ROOT = os.getcwd()
-if str(ROOT) not in sys.path:
-    sys.path.append(str(ROOT))
+if ROOT not in sys.path:
+    sys.path.append(ROOT)
 
 from yolov6.utils.events import LOGGER
 
@@ -55,8 +56,7 @@ def parse_args():
     parser.add_argument('--save_dir',default='', help='whether use pr_metric')
     parser.add_argument('--is_end2end', action='store_true', help='whether the model is end2end (build with NMS)')
 
-    args = parser.parse_args()
-    return args
+    return parser.parse_args()
 
 
 def scale_coords(img1_shape, coords, img0_shape, ratio_pad=None):
@@ -84,9 +84,9 @@ def scale_coords(img1_shape, coords, img0_shape, ratio_pad=None):
 def check_args(args):
     """Check and make sure command-line arguments are valid."""
     if not os.path.isdir(args.imgs_dir):
-        sys.exit('%s is not a valid directory' % args.imgs_dir)
+        sys.exit(f'{args.imgs_dir} is not a valid directory')
     if not os.path.isfile(args.annotations):
-        sys.exit('%s is not a valid file' % args.annotations)
+        sys.exit(f'{args.annotations} is not a valid file')
 
 
 def generate_results(data_class,
@@ -131,7 +131,7 @@ def generate_results(data_class,
             if (idx == len(valid_images)): break
             img = cv2.imread(os.path.join(imgs_dir, valid_images[idx]))
             imgs_name = os.path.splitext(valid_images[idx])[0]
-            label_path = os.path.join(labels_dir, imgs_name+ '.txt')
+            label_path = os.path.join(labels_dir, f'{imgs_name}.txt')
             with open(label_path, "r") as f:
                     target = [
                         x.split() for x in f.read().strip().splitlines() if len(x)
@@ -155,7 +155,9 @@ def generate_results(data_class,
             source_imgs.append(img_src)
             shape = (h0, w0), ((h / h0, w / w0), pad)
             shapes.append(shape)
-            assert valid_images[idx] in imgname2id.keys(), f'valid_images[idx] not in annotations you provided.'
+            assert (
+                valid_images[idx] in imgname2id.keys()
+            ), 'valid_images[idx] not in annotations you provided.'
             image_ids.append(imgname2id[valid_images[idx]])
             idx += 1
         output = processor.inference(torch.stack(preprocessed_imgs, axis=0))
@@ -237,10 +239,10 @@ def main():
 
         with open(args.model, 'wb') as f:
             f.write(engine.serialize())
-        print('Serialized the TensorRT engine to file: %s' % args.model)
+        print(f'Serialized the TensorRT engine to file: {args.model}')
 
     model_prefix = args.model.replace('.trt', '').split('/')[-1]
-    results_file = 'results_{}.json'.format(model_prefix)
+    results_file = f'results_{model_prefix}.json'
 
     if args.is_coco:
         data_class = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 18, 19, 20,
@@ -270,19 +272,21 @@ def main():
         coco_format_annotation = json.load(f)
     # Get image names from coco format annotations.
     coco_format_imgs = [x['file_name'] for x in coco_format_annotation['images']]
-    # make a projection of image names and ids.
-    imgname2id = {}
-    for item in coco_format_annotation['images']:
-        imgname2id[item['file_name']] = item['id']
+    imgname2id = {
+        item['file_name']: item['id']
+        for item in coco_format_annotation['images']
+    }
     valid_images = []
     for img_name in image_names:
         img_name_wo_ext = os.path.splitext(img_name)[0]
-        label_path = os.path.join(args.labels_dir, img_name_wo_ext + '.txt')
+        label_path = os.path.join(args.labels_dir, f'{img_name_wo_ext}.txt')
         if os.path.exists(label_path) and img_name in coco_format_imgs:
             valid_images.append(img_name)
         else:
             continue
-    assert len(valid_images) > 0, 'No valid images are found. Please check you image format or whether annotation file is match.'
+    assert (
+        valid_images
+    ), 'No valid images are found. Please check you image format or whether annotation file is match.'
     #targets=[j for j in os.listdir(args.labels_dir) if j.endswith('.txt')]
     stats, seen = generate_results(data_class,
                                     model_names,

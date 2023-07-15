@@ -20,7 +20,7 @@ def torch_dtype_from_trt(dtype):
     elif dtype == trt.float32:
         return torch.float32
     else:
-        raise TypeError('%s is not supported by torch' % dtype)
+        raise TypeError(f'{dtype} is not supported by torch')
 
 
 def torch_device_from_trt(device):
@@ -29,7 +29,7 @@ def torch_device_from_trt(device):
     elif device == trt.TensorLocation.HOST:
         return torch.device('cpu')
     else:
-        return TypeError('%s is not supported by torch' % device)
+        return TypeError(f'{device} is not supported by torch')
 
 
 def get_input_shape(engine):
@@ -42,7 +42,7 @@ def get_input_shape(engine):
     elif len(binding_dims) == 3:
         return tuple(binding_dims[1:])
     else:
-        raise ValueError('bad dims of binding %s: %s' % (binding, str(binding_dims)))
+        raise ValueError(f'bad dims of binding {binding}: {str(binding_dims)}')
 
 def letterbox(im, new_shape=(640, 640), color=(114, 114, 114), auto=True, scaleup=False, stride=32):
     # Resize and pad image while meeting stride-multiple constraints
@@ -86,8 +86,8 @@ class Processor():
             self.engine = self.runtime.deserialize_cuda_engine(f.read())
         self.input_shape = get_input_shape(self.engine)
         self.bindings = OrderedDict()
-        self.input_names = list()
-        self.output_names = list()
+        self.input_names = []
+        self.output_names = []
         for index in range(self.engine.num_bindings):
             name = self.engine.get_binding_name(index)
             if self.engine.binding_is_input(index):
@@ -123,8 +123,7 @@ class Processor():
     def detect(self, img):
         """Detect objects in the input image."""
         resized, _ = self.pre_process(img, self.input_shape)
-        outputs = self.inference(resized)
-        return outputs
+        return self.inference(resized)
 
     def pre_process(self, img_src, input_shape=None,):
         """Preprocess an image before TRT YOLO inferencing.
@@ -141,16 +140,13 @@ class Processor():
         self.binding_addrs[self.input_names[0]] = int(inputs.data_ptr())
         #self.binding_addrs['x2paddle_image_arrays'] = int(inputs.data_ptr())
         self.context.execute_v2(list(self.binding_addrs.values()))
-        if self.is_end2end:
-            nums = self.bindings['num_dets'].data
-            boxes = self.bindings['det_boxes'].data
-            scores = self.bindings['det_scores'].data
-            classes = self.bindings['det_classes'].data
-            output = torch.cat((boxes, scores[:,:,None], classes[:,:,None]), axis=-1)
-        else:
-            output = self.bindings[self.output_names[0]].data
-        #output = self.bindings['save_infer_model/scale_0.tmp_0'].data
-        return output
+        if not self.is_end2end:
+            return self.bindings[self.output_names[0]].data
+        nums = self.bindings['num_dets'].data
+        boxes = self.bindings['det_boxes'].data
+        scores = self.bindings['det_scores'].data
+        classes = self.bindings['det_classes'].data
+        return torch.cat((boxes, scores[:,:,None], classes[:,:,None]), axis=-1)
 
     def output_reformate(self, outputs):
         z = []
@@ -210,7 +206,6 @@ class Processor():
         Returns:
              list of detections, echo item is one tensor with shape (num_boxes, 6), 6 is for [xyxy, conf, cls].
         """
-        num_classes = prediction.shape[2] - 5  # number of classes
         pred_candidates = prediction[..., 4] > conf_thres  # candidates
 
         # Check the parameters.
@@ -221,7 +216,7 @@ class Processor():
         max_wh = 4096  # maximum box width and height
         max_nms = 30000  # maximum number of boxes put into torchvision.ops.nms()
         time_limit = 10.0  # quit the function when nms cost time exceed the limit time.
-        multi_label &= num_classes > 1  # multiple labels per box
+        multi_label &= prediction.shape[2] > 6
 
         tik = time.time()
         output = [torch.zeros((0, 6), device=prediction.device)] * prediction.shape[0]

@@ -9,8 +9,8 @@ import torch.nn as nn
 import onnx
 
 ROOT = os.getcwd()
-if str(ROOT) not in sys.path:
-    sys.path.append(str(ROOT))
+if ROOT not in sys.path:
+    sys.path.append(ROOT)
 
 from yolov6.models.yolo import *
 from yolov6.models.effidehead import Detect
@@ -45,7 +45,9 @@ if __name__ == '__main__':
     # Check device
     cuda = args.device != 'cpu' and torch.cuda.is_available()
     device = torch.device(f'cuda:{args.device}' if cuda else 'cpu')
-    assert not (device.type == 'cpu' and args.half), '--half only compatible with GPU export, i.e. use --device 0'
+    assert (
+        device.type != 'cpu' or not args.half
+    ), '--half only compatible with GPU export, i.e. use --device 0'
     # Load PyTorch model
     model = load_checkpoint(args.weights, map_location=device, inplace=True, fuse=True)  # load FP32 model
     for layer in model.modules():
@@ -69,10 +71,6 @@ if __name__ == '__main__':
     dynamic_axes = None
     if args.dynamic_batch:
         args.batch_size = 'batch'
-        dynamic_axes = {
-            'images' :{
-                0:'batch',
-            },}
         if args.end2end:
             output_axes = {
                 'num_dets': {0: 'batch'},
@@ -84,9 +82,11 @@ if __name__ == '__main__':
             output_axes = {
                 'outputs': {0: 'batch'},
             }
-        dynamic_axes.update(output_axes)
-
-
+        dynamic_axes = {
+            'images': {
+                0: 'batch',
+            },
+        } | output_axes
     if args.end2end:
         from yolov6.models.end2end import End2End
         model = End2End(model, max_obj=args.topk_all, iou_thres=args.iou_thres,score_thres=args.conf_thres,

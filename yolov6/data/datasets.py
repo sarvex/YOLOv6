@@ -100,7 +100,7 @@ class TrainValDataset(Dataset):
 
         t2 = time.time()
         if self.main_process:
-            LOGGER.info(f"%.1fs for dataset initialization." % (t2 - t1))
+            LOGGER.info("%.1fs for dataset initialization." % (t2 - t1))
 
     def __len__(self):
         """Get the length of dataset"""
@@ -246,7 +246,7 @@ class TrainValDataset(Dataset):
             img_dirs = [img_dirs]
         # we store the cache img file in the first directory of img_dirs
         valid_img_record = osp.join(
-            osp.dirname(img_dirs[0]), "." + osp.basename(img_dirs[0]) + "_cache.json"
+            osp.dirname(img_dirs[0]), f".{osp.basename(img_dirs[0])}_cache.json"
         )
         NUM_THREADS = min(8, os.cpu_count())
         img_paths = []
@@ -303,7 +303,7 @@ class TrainValDataset(Dataset):
 
         img_paths = list(img_info.keys())
         label_paths = img2label_paths(img_paths)
-        assert label_paths, f"No labels found."
+        assert label_paths, "No labels found."
         label_hash = self.get_hash(label_paths)
         if "label_hash" not in cache_info or cache_info["label_hash"] != label_hash:
             self.check_labels = True
@@ -361,9 +361,7 @@ class TrainValDataset(Dataset):
                 save_dir = osp.join(osp.dirname(osp.dirname(img_dirs[0])), "annotations")
                 if not osp.exists(save_dir):
                     os.mkdir(save_dir)
-                save_path = osp.join(
-                    save_dir, "instances_" + osp.basename(img_dirs[0]) + ".json"
-                )
+                save_path = osp.join(save_dir, f"instances_{osp.basename(img_dirs[0])}.json")
                 TrainValDataset.generate_coco_format_labels(
                     img_info, self.class_names, save_path
                 )
@@ -544,8 +542,8 @@ class TrainValDataset(Dataset):
             )
 
         ann_id = 0
-        LOGGER.info(f"Convert to COCO format")
-        for i, (img_path, info) in enumerate(tqdm(img_info.items())):
+        LOGGER.info("Convert to COCO format")
+        for img_path, info in tqdm(img_info.items()):
             labels = info["labels"] if info["labels"] else []
             img_id = osp.splitext(osp.basename(img_path))[0]
             img_h, img_w = info["shape"]
@@ -617,7 +615,7 @@ class LoadData:
         self.files = imgp + vidp
         self.nf = len(self.files)
         self.type = 'image'
-        if len(vidp) > 0:
+        if vidp:
             self.add_video(vidp[0])  # new video
         else:
             self.cap = None
@@ -625,10 +623,9 @@ class LoadData:
     # @staticmethod
     def checkext(self, path):
         if self.webcam:
-            file_type = 'video'
+            return 'video'
         else:
-            file_type = 'image' if path.split('.')[-1].lower() in IMG_FORMATS else 'video'
-        return file_type
+            return 'image' if path.split('.')[-1].lower() in IMG_FORMATS else 'video'
 
     def __iter__(self):
         self.count = 0
