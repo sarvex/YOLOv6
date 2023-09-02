@@ -107,7 +107,7 @@ class TrainValDataLoader(dataloader.DataLoader):
         return len(self.batch_sampler.sampler)
 
     def __iter__(self):
-        for i in range(len(self)):
+        for _ in range(len(self)):
             yield next(self.iterator)
 
 

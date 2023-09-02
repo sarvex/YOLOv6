@@ -7,47 +7,46 @@ import sys
 import copy
 
 def search_node_by_output_id(nodes, output_id: str):
-    prev_node = None
-    for node_id, node in enumerate(nodes):
-        if output_id in node.output:
-            prev_node = node
-            break
-    return prev_node
+    return next((node for node in nodes if output_id in node.output), None)
 
 def get_prev_node(nodes, node):
     node_input_list = node.input
     prev_node_list = []
-    for node_id, node in enumerate(nodes):
-        for node_output in node.output:
-            if node_output in node_input_list:
-                prev_node_list.append(node)
+    for node in nodes:
+        prev_node_list.extend(
+            node
+            for node_output in node.output
+            if node_output in node_input_list
+        )
     return prev_node_list
 
 def get_next_node(nodes, node):
     node_output_list = node.output
     next_node_list = []
-    for node_id, node in enumerate(nodes):
-        for node_input in node.input:
-            if node_input in node_output_list:
-                next_node_list.append(node)
+    for node in nodes:
+        next_node_list.extend(
+            node for node_input in node.input if node_input in node_output_list
+        )
     return next_node_list
 
 def get_conv_qdq_node(nodes, conv_node):
     # get conv input
     conv_input_id = conv_node.input[0]
-    # print(conv_input_id)
-    dequant_node = None
     quant_node = None
-    # get dequant node by conv input
-    for node_id, node in enumerate(nodes):
-        if node.op_type == "DequantizeLinear" and conv_input_id in node.output:
-            dequant_node = node
-            break
+    dequant_node = next(
+        (
+            node
+            for node in nodes
+            if node.op_type == "DequantizeLinear"
+            and conv_input_id in node.output
+        ),
+        None,
+    )
     # get quant node by dequant input
     if dequant_node is not None:
         dequant_input_id = dequant_node.input[0]
         # print(dequant_input_id)
-        for node_id, node in enumerate(nodes):
+        for node in nodes:
             if node.op_type == "QuantizeLinear" and dequant_input_id in node.output:
                 quant_node = node
                 break
@@ -61,7 +60,7 @@ def onnx_conv_horizon_fuse(onnx_model):
     nodes = graph.node
     # find qualified add op
     pattern = []
-    for node_id, node in enumerate(graph.node):
+    for node in graph.node:
         if node.op_type == "Add":
             avail_count = 0
             for input_id in node.input:
@@ -101,17 +100,14 @@ def onnx_conv_horizon_fuse(onnx_model):
         scale_node_list = []
         for qdq_node in qdq_node_list:
             scale_iput_id = qdq_node.input[1]
-            for node in nodes:
-                if scale_iput_id in node.output:
-                    scale_node_list.append(node)
+            scale_node_list.extend(node for node in nodes if scale_iput_id in node.output)
         # print(scale_node_list)
         # get max scale
         max = 0
         for scale_node in scale_node_list:
             val = np.frombuffer(scale_node.attribute[0].t.raw_data, dtype=np.float32)[0]
             print(val)
-            if max < val:
-                max = val
+            max = max(max, val)
         # rewrite max scale
         for scale_node in scale_node_list:
             scale_node.attribute[0].t.raw_data = bytes(struct.pack("f", max))
@@ -150,17 +146,21 @@ def onnx_add_insert_qdqnode(onnx_model):
     for pattern in patterns:
         add_node, prev_add_node, quant_node, dequant_node, same_input = pattern
         dq_x, dq_s, dq_z = dequant_node.input
-        new_quant_node = onnx.helper.make_node('QuantizeLinear',
-                                                inputs=quant_node.input,
-                                                outputs=[prev_add_node.name + "_Dequant"],
-                                                name=prev_add_node.name + "_QuantizeLinear")
-        new_dequant_node = onnx.helper.make_node('DequantizeLinear',
-                                                inputs=[prev_add_node.name + "_Dequant", dq_s, dq_z],
-                                                outputs=[prev_add_node.name + "_Add"],
-                                                name=prev_add_node.name + "_DequantizeLinear")
+        new_quant_node = onnx.helper.make_node(
+            'QuantizeLinear',
+            inputs=quant_node.input,
+            outputs=[f"{prev_add_node.name}_Dequant"],
+            name=f"{prev_add_node.name}_QuantizeLinear",
+        )
+        new_dequant_node = onnx.helper.make_node(
+            'DequantizeLinear',
+            inputs=[f"{prev_add_node.name}_Dequant", dq_s, dq_z],
+            outputs=[f"{prev_add_node.name}_Add"],
+            name=f"{prev_add_node.name}_DequantizeLinear",
+        )
 
         add_node.input.remove(same_input)
-        add_node.input.append(prev_add_node.name + "_Add")
+        add_node.input.append(f"{prev_add_node.name}_Add")
         for node_id, node in enumerate(graph.node):
             if node.name == prev_add_node.name:
                 graph.node.insert(node_id + 1, new_quant_node)
@@ -206,13 +206,13 @@ def onnx_remove_qdqnode(onnx_model):
             #    if node.output[0] == zero_name:
             #        graph.node.remove(nodes[i])
             # record scale of activation
-            for i, node in enumerate(graph.node):
+            for node in graph.node:
                 if node.output[0] == scale_name:
                     if len(node.attribute[0].t.dims) == 0:
                         # print(node.attribute[0].t.raw_data)
                         # print(np.frombuffer(node.attribute[0].t.raw_data, dtype=np.float32))
                         val = np.frombuffer(node.attribute[0].t.raw_data, dtype=np.float32)[0]
-                        if in_name in activation_map.keys():
+                        if in_name in activation_map:
                             old_val = struct.unpack('!f', bytes.fromhex(activation_map[in_name]))[0]
                             # print("Already record, old {:.4f}, new {:.4f}".format(old_val, val))
                             if val > old_val:
@@ -224,11 +224,11 @@ def onnx_remove_qdqnode(onnx_model):
 
 
     # relink
-    for node_id, node in enumerate(graph.node):
-       for in_id, in_name in enumerate(node.input):
-           if in_name in in_rename_map.keys():
-               # set node input == removed node's input
-               node.input[in_id] = in_rename_map[in_name]
+    for node in graph.node:
+        for in_id, in_name in enumerate(node.input):
+            if in_name in in_rename_map:
+                # set node input == removed node's input
+                node.input[in_id] = in_rename_map[in_name]
 
     in_rename_map = {}
     # activation_map = {}
@@ -245,10 +245,10 @@ def onnx_remove_qdqnode(onnx_model):
            zero_node_list.append(zero_name)
 
     # relink
-    for node_id, node in enumerate(graph.node):
-       for in_id, in_name in enumerate(node.input):
-           if in_name in in_rename_map.keys():
-               node.input[in_id] = in_rename_map[in_name]
+    for node in graph.node:
+        for in_id, in_name in enumerate(node.input):
+            if in_name in in_rename_map:
+                node.input[in_id] = in_rename_map[in_name]
 
     nodes = graph.node
     for node_name in (scale_node_list + zero_node_list):
@@ -275,7 +275,7 @@ def save_calib_cache_file(cache_file, activation_map, headline='TRT-8XXX-Entropy
     with open(os.path.join(cache_file), 'w') as cfile:
         cfile.write(headline)
         for k, v in activation_map.items():
-            cfile.write("{}: {}\n".format(k, v))
+            cfile.write(f"{k}: {v}\n")
 
 def get_remove_qdq_onnx_and_cache(onnx_file):
     model = onnx.load(onnx_file)

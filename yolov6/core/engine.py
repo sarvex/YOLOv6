@@ -54,7 +54,9 @@ class Trainer:
         self.data_dict = load_yaml(args.data_path)
         self.num_classes = self.data_dict['nc']
         # get model and optimizer
-        self.distill_ns = True if self.args.distill and self.cfg.model.type in ['YOLOv6n','YOLOv6s'] else False
+        self.distill_ns = bool(
+            self.args.distill and self.cfg.model.type in ['YOLOv6n', 'YOLOv6s']
+        )
         model = self.get_model(args, cfg, self.num_classes, device)
         if self.args.distill:
             if self.args.fuse_ab:
@@ -65,7 +67,7 @@ class Trainer:
             self.quant_setup(model, cfg, device)
         if cfg.training_mode == 'repopt':
             scales = self.load_scale_from_pretrained_models(cfg, device)
-            reinit = False if cfg.model.pretrained is not None else True
+            reinit = cfg.model.pretrained is None
             self.optimizer = RepVGGOptimizer(model, scales, args, cfg, reinit=reinit)
         else:
             self.optimizer = self.get_optimizer(args, cfg, model)
@@ -380,7 +382,9 @@ class Trainer:
         # check data
         nc = int(data_dict['nc'])
         class_names = data_dict['names']
-        assert len(class_names) == nc, f'the length of class names does not match the number of classes defined'
+        assert (
+            len(class_names) == nc
+        ), 'the length of class names does not match the number of classes defined'
         grid_size = max(int(max(cfg.model.head.strides)), 32)
         # create train dataloader
         train_loader = create_dataloader(train_path, args.img_size, args.batch_size // args.world_size, grid_size,
@@ -388,16 +392,27 @@ class Trainer:
                                          workers=args.workers, shuffle=True, check_images=args.check_images,
                                          check_labels=args.check_labels, data_dict=data_dict, task='train',
                                          specific_shape=args.specific_shape, height=args.height, width=args.width)[0]
-        # create val dataloader
-        val_loader = None
         if args.rank in [-1, 0]:
-             # TODO: check whether to set rect to self.rect?
-            val_loader = create_dataloader(val_path, args.img_size, args.batch_size // args.world_size * 2, grid_size,
-                                           hyp=dict(cfg.data_aug), rect=True, rank=-1, pad=0.5,
-                                           workers=args.workers, check_images=args.check_images,
-                                           check_labels=args.check_labels, data_dict=data_dict, task='val',
-                                           specific_shape=args.specific_shape, height=args.height, width=args.width)[0]
-
+            val_loader = create_dataloader(
+                val_path,
+                args.img_size,
+                args.batch_size // args.world_size * 2,
+                grid_size,
+                hyp=dict(cfg.data_aug),
+                rect=True,
+                rank=-1,
+                pad=0.5,
+                workers=args.workers,
+                check_images=args.check_images,
+                check_labels=args.check_labels,
+                data_dict=data_dict,
+                task='val',
+                specific_shape=args.specific_shape,
+                height=args.height,
+                width=args.width,
+            )[0]
+        else:
+            val_loader = None
         return train_loader, val_loader
 
     @staticmethod
@@ -413,24 +428,22 @@ class Trainer:
             model = build_lite_model(cfg, nc, device)
         else:
             model = build_model(cfg, nc, device, fuse_ab=self.args.fuse_ab, distill_ns=self.distill_ns)
-        weights = cfg.model.pretrained
-        if weights:  # finetune if pretrained model is set
+        if weights := cfg.model.pretrained:
             if not os.path.exists(weights):
                 download_ckpt(weights)
             LOGGER.info(f'Loading state_dict from {weights} for fine-tuning...')
             model = load_state_dict(weights, model, map_location=device)
 
-        LOGGER.info('Model: {}'.format(model))
+        LOGGER.info(f'Model: {model}')
         return model
 
     def get_teacher_model(self, args, cfg, nc, device):
-        teacher_fuse_ab = False if cfg.model.head.num_layers != 3 else True
+        teacher_fuse_ab = cfg.model.head.num_layers == 3
         model = build_model(cfg, nc, device, fuse_ab=teacher_fuse_ab)
-        weights = args.teacher_model_path
-        if weights:  # finetune if pretrained model is set
+        if weights := args.teacher_model_path:
             LOGGER.info(f'Loading state_dict from {weights} for teacher')
             model = load_state_dict(weights, model, map_location=device)
-        LOGGER.info('Model: {}'.format(model))
+        LOGGER.info(f'Model: {model}')
         # Do not update running means and running vars
         for module in model.modules():
             if isinstance(module, torch.nn.BatchNorm2d):
@@ -468,8 +481,7 @@ class Trainer:
         accumulate = max(1, round(64 / args.batch_size))
         cfg.solver.weight_decay *= args.batch_size * accumulate / 64
         cfg.solver.lr0 *= args.batch_size / (self.world_size * args.bs_per_gpu) # rescale lr0 related to batchsize
-        optimizer = build_optimizer(cfg, model)
-        return optimizer
+        return build_optimizer(cfg, model)
 
     @staticmethod
     def get_lr_scheduler(args, cfg, optimizer):
@@ -524,7 +536,7 @@ class Trainer:
                 for j, box in enumerate(boxes.T.tolist()):
                     box = [int(k) for k in box]
                     cls = classes[j]
-                    color = tuple([int(x) for x in self.color[cls]])
+                    color = tuple(self.color[cls])
                     cls = self.data_dict['names'][cls] if self.data_dict['names'] else cls
                     if labels:
                         label = f'{cls}'
@@ -548,8 +560,22 @@ class Trainer:
                 # draw top n bbox
                 if box_score < vis_conf or bbox_idx > vis_max_box_num:
                     break
-                cv2.rectangle(ori_img, (x_tl, y_tl), (x_br, y_br), tuple([int(x) for x in self.color[cls_id]]), thickness=1)
-                cv2.putText(ori_img, f"{self.data_dict['names'][cls_id]}: {box_score:.2f}", (x_tl, y_tl - 10), cv2.FONT_HERSHEY_COMPLEX, 0.5, tuple([int(x) for x in self.color[cls_id]]), thickness=1)
+                cv2.rectangle(
+                    ori_img,
+                    (x_tl, y_tl),
+                    (x_br, y_br),
+                    tuple(int(x) for x in self.color[cls_id]),
+                    thickness=1,
+                )
+                cv2.putText(
+                    ori_img,
+                    f"{self.data_dict['names'][cls_id]}: {box_score:.2f}",
+                    (x_tl, y_tl - 10),
+                    cv2.FONT_HERSHEY_COMPLEX,
+                    0.5,
+                    tuple(int(x) for x in self.color[cls_id]),
+                    thickness=1,
+                )
             self.vis_imgs_list.append(torch.from_numpy(ori_img[:, :, ::-1].copy()))
 
 

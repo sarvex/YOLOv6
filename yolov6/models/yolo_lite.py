@@ -78,8 +78,7 @@ def build_network(config, in_channels, num_classes):
 
 
 def build_model(cfg, num_classes, device):
-    model = Model(cfg, channels=3, num_classes=num_classes).to(device)
-    return model
+    return Model(cfg, channels=3, num_classes=num_classes).to(device)
 
 def make_divisible(v, divisor=16):
     new_v = max(divisor, int(v + divisor / 2) // divisor * divisor)

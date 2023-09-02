@@ -8,7 +8,6 @@ def generate_anchors(feats, fpn_strides, grid_cell_size=5.0, grid_cell_offset=0.
     anchors = []
     anchor_points = []
     stride_tensor = []
-    num_anchors_list = []
     assert feats is not None
     if is_eval:
         for i, stride in enumerate(fpn_strides):
@@ -32,6 +31,7 @@ def generate_anchors(feats, fpn_strides, grid_cell_size=5.0, grid_cell_offset=0.
         stride_tensor = torch.cat(stride_tensor)
         return anchor_points, stride_tensor
     else:
+        num_anchors_list = []
         for i, stride in enumerate(fpn_strides):
             _, _, h, w = feats[i].shape
             cell_half_size = grid_cell_size * stride * 0.5

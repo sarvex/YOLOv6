@@ -13,10 +13,7 @@ class yolox():
         self.input_size = (640, 640)
         self.mean = (0.485, 0.456, 0.406)
         self.std = (0.229, 0.224, 0.225)
-        if not p6:
-            self.strides = [8, 16, 32]
-        else:
-            self.strides = [8, 16, 32, 64]
+        self.strides = [8, 16, 32] if not p6 else [8, 16, 32, 64]
         self.confThreshold = confThreshold
         self.nmsThreshold = nmsThreshold
         self.objThreshold = objThreshold
@@ -98,17 +95,14 @@ class yolox():
             valid_score_mask = cls_scores > self.confThreshold
             if valid_score_mask.sum() == 0:
                 continue
-            else:
-                valid_scores = cls_scores[valid_score_mask]
-                valid_boxes = boxes[valid_score_mask]
-                keep = self.nms(valid_boxes, valid_scores)
-                if len(keep) > 0:
-                    cls_inds = np.ones((len(keep), 1)) * cls_ind
-                    dets = np.concatenate([valid_boxes[keep], valid_scores[keep, None], cls_inds], 1)
-                    final_dets.append(dets)
-        if len(final_dets) == 0:
-            return None
-        return np.concatenate(final_dets, 0)
+            valid_scores = cls_scores[valid_score_mask]
+            valid_boxes = boxes[valid_score_mask]
+            keep = self.nms(valid_boxes, valid_scores)
+            if len(keep) > 0:
+                cls_inds = np.ones((len(keep), 1)) * cls_ind
+                dets = np.concatenate([valid_boxes[keep], valid_scores[keep, None], cls_inds], 1)
+                final_dets.append(dets)
+        return None if not final_dets else np.concatenate(final_dets, 0)
 
     def vis(self, img, boxes, scores, cls_ids):
         for i in range(len(boxes)):

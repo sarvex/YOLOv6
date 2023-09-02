@@ -3,8 +3,8 @@ import time
 import sys
 import os
 ROOT = os.getcwd()
-if str(ROOT) not in sys.path:
-    sys.path.append(str(ROOT))
+if ROOT not in sys.path:
+    sys.path.append(ROOT)
 sys.path.append('../../')
 from yolov6.models.effidehead import Detect
 from yolov6.models.yolo import build_model
@@ -34,15 +34,16 @@ def zero_scale_fix(model, device):
 
     for k, m in model.named_modules():
         # print(k, m)
-        if isinstance(m, quant_nn.QuantConv2d) or \
-            isinstance(m, quant_nn.QuantConvTranspose2d):
+        if isinstance(
+            m, (quant_nn.QuantConv2d, quant_nn.QuantConvTranspose2d)
+        ):
             # print(m)
             # print(m._weight_quantizer._amax)
             weight_amax = m._weight_quantizer._amax.detach().cpu().numpy()
             # print(weight_amax)
             print(k)
             ones = np.ones_like(weight_amax)
-            print("zero scale number = {}".format(np.sum(weight_amax == 0.0)))
+            print(f"zero scale number = {np.sum(weight_amax == 0.0)}")
             weight_amax = np.where(weight_amax == 0.0, ones, weight_amax)
             m._weight_quantizer._amax.copy_(torch.from_numpy(weight_amax).to(device))
         else:
@@ -149,7 +150,9 @@ if __name__ == '__main__':
                          )
     else:
         img = torch.zeros(args.export_batch_size, 3, *args.img_size).to(device)
-        export_file = args.quant_weights.replace('.pt', '_bs{}.onnx'.format(args.export_batch_size))  # filename
+        export_file = args.quant_weights.replace(
+            '.pt', f'_bs{args.export_batch_size}.onnx'
+        )
         if args.graph_opt:
             export_file = export_file.replace('.onnx', '_graph_opt.onnx')
         if args.end2end:

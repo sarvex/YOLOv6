@@ -32,15 +32,13 @@ def draw_label(im, label, x, y):
     cv2.putText(im, label, (x, y + dim[1]), FONT_FACE, FONT_SCALE, YELLOW, THICKNESS, cv2.LINE_AA)
 
 def pre_process(input_image, net):
-      # Create a 4D blob from a frame.
-      blob = cv2.dnn.blobFromImage(input_image, 1/255,  (INPUT_WIDTH, INPUT_HEIGHT), [0,0,0], 1, crop=False)
+    # Create a 4D blob from a frame.
+    blob = cv2.dnn.blobFromImage(input_image, 1/255,  (INPUT_WIDTH, INPUT_HEIGHT), [0,0,0], 1, crop=False)
 
-      # Sets the input to the network.
-      net.setInput(blob)
+    # Sets the input to the network.
+    net.setInput(blob)
 
-      # Run the forward pass to get output of the output layers.
-      outputs = net.forward(net.getUnconnectedOutLayersNames())
-      return outputs
+    return net.forward(net.getUnconnectedOutLayersNames())
 
 def post_process(input_image, outputs):
         # Lists to hold respective values while unwrapping.

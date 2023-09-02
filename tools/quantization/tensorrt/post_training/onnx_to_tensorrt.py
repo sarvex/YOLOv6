@@ -41,7 +41,7 @@ def add_profiles(config, inputs, opt_profiles):
     for i, profile in enumerate(opt_profiles):
         for inp in inputs:
             _min, _opt, _max = profile.get_shape(inp.name)
-            logger.debug("{} - OptProfile {} - Min {} Opt {} Max {}".format(inp.name, i, _min, _opt, _max))
+            logger.debug(f"{inp.name} - OptProfile {i} - Min {_min} Opt {_opt} Max {_max}")
         config.add_optimization_profile(profile)
 
 
@@ -87,7 +87,7 @@ def get_batch_sizes(max_batch_size):
 # TODO: This only covers dynamic shape for batch size, not dynamic shape for other dimensions
 def create_optimization_profiles(builder, inputs, batch_sizes=[1,8,16,32,64]):
     # Check if all inputs are fixed explicit batch to create a single profile and avoid duplicates
-    if all([inp.shape[0] > -1 for inp in inputs]):
+    if all(inp.shape[0] > -1 for inp in inputs):
         profile = builder.create_optimization_profile()
         for inp in inputs:
             fbs, shape = inp.shape[0], inp.shape[1:]
@@ -163,23 +163,20 @@ def main():
     }
 
     # Building engine
-    with trt.Builder(TRT_LOGGER) as builder, \
-         builder.create_network(network_flags) as network, \
-         builder.create_builder_config() as config, \
-         trt.OnnxParser(network, TRT_LOGGER) as parser:
+    with (trt.Builder(TRT_LOGGER) as builder, builder.create_network(network_flags) as network, builder.create_builder_config() as config, trt.OnnxParser(network, TRT_LOGGER) as parser):
 
         config.max_workspace_size = 2**30 # 1GiB
 
         # Set Builder Config Flags
         for flag in builder_flag_map:
             if getattr(args, flag):
-                logger.info("Setting {}".format(builder_flag_map[flag]))
+                logger.info(f"Setting {builder_flag_map[flag]}")
                 config.set_flag(builder_flag_map[flag])
 
         # Fill network atrributes with information by parsing model
         with open(args.onnx, "rb") as f:
             if not parser.parse(f.read()):
-                print('ERROR: Failed to parse the ONNX file: {}'.format(args.onnx))
+                print(f'ERROR: Failed to parse the ONNX file: {args.onnx}')
                 for error in range(parser.num_errors):
                     print(parser.get_error(error))
                 sys.exit(1)

@@ -69,8 +69,8 @@ class Detect(nn.Module):
                                                    requires_grad=False)
 
     def forward(self, x):
+        cls_score_list = []
         if self.training:
-            cls_score_list = []
             reg_distri_list = []
 
             for i in range(self.nl):
@@ -91,7 +91,6 @@ class Detect(nn.Module):
 
             return x, cls_score_list, reg_distri_list
         else:
-            cls_score_list = []
             reg_dist_list = []
 
             for i in range(self.nl):

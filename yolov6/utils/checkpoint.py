@@ -21,7 +21,7 @@ def load_state_dict(weights, model, map_location=None):
 
 def load_checkpoint(weights, map_location=None, inplace=True, fuse=True):
     """Load model from checkpoint file."""
-    LOGGER.info("Loading checkpoint from {}".format(weights))
+    LOGGER.info(f"Loading checkpoint from {weights}")
     ckpt = torch.load(weights, map_location=map_location)  # load
     model = ckpt['ema' if ckpt.get('ema') else 'model'].float()
     if fuse:
@@ -36,7 +36,7 @@ def save_checkpoint(ckpt, is_best, save_dir, model_name=""):
     """ Save checkpoint to the disk."""
     if not osp.exists(save_dir):
         os.makedirs(save_dir)
-    filename = osp.join(save_dir, model_name + '.pt')
+    filename = osp.join(save_dir, f'{model_name}.pt')
     torch.save(ckpt, filename)
     if is_best:
         best_filename = osp.join(save_dir, 'best_ckpt.pt')
@@ -46,7 +46,7 @@ def save_checkpoint(ckpt, is_best, save_dir, model_name=""):
 def strip_optimizer(ckpt_dir, epoch):
     """Delete optimizer from saved checkpoint file"""
     for s in ['best', 'last']:
-        ckpt_path = osp.join(ckpt_dir, '{}_ckpt.pt'.format(s))
+        ckpt_path = osp.join(ckpt_dir, f'{s}_ckpt.pt')
         if not osp.exists(ckpt_path):
             continue
         ckpt = torch.load(ckpt_path, map_location=torch.device('cpu'))

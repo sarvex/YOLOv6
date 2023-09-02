@@ -7,8 +7,8 @@ import sys
 import torch
 
 ROOT = os.getcwd()
-if str(ROOT) not in sys.path:
-    sys.path.append(str(ROOT))
+if ROOT not in sys.path:
+    sys.path.append(ROOT)
 
 from yolov6.core.evaler import Evaler
 from yolov6.utils.events import LOGGER
@@ -60,8 +60,7 @@ def run(data,
                 None, device, False, save_dir)
 
     dataloader,pred_result = val.eval_trt(weights)
-    eval_result = val.eval_model(pred_result, dummy_model, dataloader, task)
-    return eval_result
+    return val.eval_model(pred_result, dummy_model, dataloader, task)
 
 
 def main(args):

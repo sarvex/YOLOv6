@@ -7,8 +7,8 @@ import sys
 import torch
 
 ROOT = os.getcwd()
-if str(ROOT) not in sys.path:
-    sys.path.append(str(ROOT))
+if ROOT not in sys.path:
+    sys.path.append(ROOT)
 
 from yolov6.core.evaler import Evaler
 from yolov6.utils.events import LOGGER
@@ -49,7 +49,9 @@ def get_args_parser(add_help=True):
     args = parser.parse_args()
 
     if args.config_file:
-        assert os.path.exists(args.config_file), print("Config file {} does not exist".format(args.config_file))
+        assert os.path.exists(args.config_file), print(
+            f"Config file {args.config_file} does not exist"
+        )
         cfg = Config.fromfile(args.config_file)
         if not hasattr(cfg, 'eval_params'):
             LOGGER.info("Config file doesn't has eval params config.")
@@ -62,13 +64,14 @@ def get_args_parser(add_help=True):
                 if isinstance(value, list):
                     if value[1] is not None:
                         args.__dict__[key] = value[1]
-                else:
-                    if value is not None:
-                        args.__dict__[key] = value
+                elif value is not None:
+                    args.__dict__[key] = value
 
     # load params for reproduce 640 eval result
     if args.reproduce_640_eval:
-        assert os.path.exists(args.eval_config_file), print("Reproduce config file {} does not exist".format(args.eval_config_file))
+        assert os.path.exists(args.eval_config_file), print(
+            f"Reproduce config file {args.eval_config_file} does not exist"
+        )
         eval_params = Config.fromfile(args.eval_config_file).eval_params
         eval_model_name = os.path.splitext(os.path.basename(args.weights))[0]
         if eval_model_name not in eval_params:

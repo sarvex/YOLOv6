@@ -78,27 +78,27 @@ class DataLoader:
         self.input_w = input_w
         # self.img_list = [i.strip() for i in open('calib.txt').readlines()]
         self.img_list = [os.path.join(calib_img_dir, x) for x in os.listdir(calib_img_dir) if os.path.splitext(x)[-1] in IMG_FORMATS]
-        assert len(self.img_list) > self.batch_size * self.length, \
-            '{} must contains more than '.format(calib_img_dir) + str(self.batch_size * self.length) + ' images to calib'
-        print('found all {} images to calib.'.format(len(self.img_list)))
+        assert (
+            len(self.img_list) > self.batch_size * self.length
+        ), f'{calib_img_dir} must contains more than {str(self.batch_size * self.length)} images to calib'
+        print(f'found all {len(self.img_list)} images to calib.')
         self.calibration_data = np.zeros((self.batch_size, 3, input_h, input_w), dtype=np.float32)
 
     def reset(self):
         self.index = 0
 
     def next_batch(self):
-        if self.index < self.length:
-            for i in range(self.batch_size):
-                assert os.path.exists(self.img_list[i + self.index * self.batch_size]), f'{self.img_list[i + self.index * self.batch_size]} not found!!'
-                img = cv2.imread(self.img_list[i + self.index * self.batch_size])
-                img = process_image(img, [self.input_h, self.input_w], 32)
-
-                self.calibration_data[i] = img
-
-            self.index += 1
-            return np.ascontiguousarray(self.calibration_data, dtype=np.float32)
-        else:
+        if self.index >= self.length:
             return np.array([])
+        for i in range(self.batch_size):
+            assert os.path.exists(self.img_list[i + self.index * self.batch_size]), f'{self.img_list[i + self.index * self.batch_size]} not found!!'
+            img = cv2.imread(self.img_list[i + self.index * self.batch_size])
+            img = process_image(img, [self.input_h, self.input_w], 32)
+
+            self.calibration_data[i] = img
+
+        self.index += 1
+        return np.ascontiguousarray(self.calibration_data, dtype=np.float32)
 
     def __len__(self):
         return self.length

@@ -82,20 +82,20 @@ def get_int8_calibrator(calib_cache, calib_data, max_calib_size, calib_batch_siz
     if os.path.exists(calib_cache):
         logger.info("Skipping calibration files, using calibration cache: {:}".format(calib_cache))
         calib_files = []
-    # Use calibration files from validation dataset if no cache exists
-    else:
-        if not calib_data:
-            raise ValueError("ERROR: Int8 mode requested, but no calibration data provided. Please provide --calibration-data /path/to/calibration/files")
-
+    elif calib_data:
         calib_files = get_calibration_files(calib_data, max_calib_size)
+
+    else:
+        raise ValueError("ERROR: Int8 mode requested, but no calibration data provided. Please provide --calibration-data /path/to/calibration/files")
 
     # Choose pre-processing function for INT8 calibration
     preprocess_func = preprocess_yolov6
 
-    int8_calibrator = ImageCalibrator(calibration_files=calib_files,
-                                         batch_size=calib_batch_size,
-                                         cache_file=calib_cache)
-    return int8_calibrator
+    return ImageCalibrator(
+        calibration_files=calib_files,
+        batch_size=calib_batch_size,
+        cache_file=calib_cache,
+    )
 
 
 def get_calibration_files(calibration_data, max_calibration_size=None, allowed_extensions=(".jpeg", ".jpg", ".png")):
@@ -120,7 +120,7 @@ def get_calibration_files(calibration_data, max_calibration_size=None, allowed_e
                          if os.path.isfile(path) and path.lower().endswith(allowed_extensions)]
     logger.info("Number of Calibration Files found: {:}".format(len(calibration_files)))
 
-    if len(calibration_files) == 0:
+    if not calibration_files:
         raise Exception("ERROR: Calibration data path [{:}] contains no files!".format(calibration_data))
 
     if max_calibration_size:

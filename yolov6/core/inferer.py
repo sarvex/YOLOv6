@@ -105,7 +105,7 @@ class Inferer:
                     if save_txt:  # Write to file
                         xywh = (self.box_convert(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
                         line = (cls, *xywh, conf)
-                        with open(txt_path + '.txt', 'a') as f:
+                        with open(f'{txt_path}.txt', 'a') as f:
                             f.write(('%g ' * len(line)).rstrip() % line + '\n')
 
                     if save_img:
@@ -244,7 +244,7 @@ class Inferer:
         if label:
             tf = max(lw - 1, 1)  # font thickness
             w, h = cv2.getTextSize(label, 0, fontScale=lw / 3, thickness=tf)[0]  # text width, height
-            outside = p1[1] - h - 3 >= 0  # label fits outside box
+            outside = p1[1] - h >= 3
             p2 = p1[0] + w, p1[1] - h - 3 if outside else p1[1] + h + 3
             cv2.rectangle(image, p1, p2, color, -1, cv2.LINE_AA)  # filled
             cv2.putText(image, label, (p1[0], p1[1] - 2 if outside else p1[1] + h + 2), font, lw / 3, txt_color,
@@ -275,7 +275,7 @@ class Inferer:
                '2C99A8', '00C2FF', '344593', '6473FF', '0018EC', '8438FF', '520085', 'CB38FF', 'FF95C8', 'FF37C7')
         palette = []
         for iter in hex:
-            h = '#' + iter
+            h = f'#{iter}'
             palette.append(tuple(int(h[1 + i:1 + i + 2], 16) for i in (0, 2, 4)))
         num = len(palette)
         color = palette[int(i) % num]
@@ -289,7 +289,4 @@ class CalcFPS:
         self.framerate.append(duration)
 
     def accumulate(self):
-        if len(self.framerate) > 1:
-            return np.average(self.framerate)
-        else:
-            return 0.0
+        return np.average(self.framerate) if len(self.framerate) > 1 else 0.0

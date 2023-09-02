@@ -61,7 +61,7 @@ def build_engine(onnx_file, json_file, engine_file):
     config.max_workspace_size = GiB(1)
 
     if not os.path.exists(onnx_file):
-        quit('ONNX file {} not found'.format(onnx_file))
+        quit(f'ONNX file {onnx_file} not found')
 
     with open(onnx_file, 'rb') as model:
         if not parser.parse(model.read()):

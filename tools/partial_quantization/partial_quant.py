@@ -4,8 +4,8 @@ import sys
 import os
 
 ROOT = os.getcwd()
-if str(ROOT) not in sys.path:
-    sys.path.append(str(ROOT))
+if ROOT not in sys.path:
+    sys.path.append(ROOT)
 
 sys.path.append('../../')
 
@@ -113,7 +113,9 @@ if __name__ == '__main__':
                          )
     else:
         img = torch.zeros(args.export_batch_size, 3, *args.img_size).to(device)
-        export_file = args.weights.replace('.pt', '_partial_bs{}.onnx'.format(args.export_batch_size))  # filename
+        export_file = args.weights.replace(
+            '.pt', f'_partial_bs{args.export_batch_size}.onnx'
+        )
         torch.onnx.export(model_ptq,
                           img,
                           export_file,
